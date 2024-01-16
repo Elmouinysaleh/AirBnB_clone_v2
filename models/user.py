@@ -3,7 +3,6 @@
 from sqlalchemy.ext.declarative import declarative_base
 from models.base_model import BaseModel, Base
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import relationship
 
 class User(BaseModel, Base):
     """This is the class for user
