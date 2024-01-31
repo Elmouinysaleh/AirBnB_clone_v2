@@ -5,7 +5,7 @@ import os
 
 
 # Set the username and SSH key
-env.user = 'your_username'
+env.user = 'ubuntu'
 env.key_filename = '/path/to/your/private/key.pem'
 
 # Set the IP addresses of your web servers
