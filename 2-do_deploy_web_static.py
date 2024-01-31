@@ -1,39 +1,40 @@
 #!/usr/bin/python3
+""" Function that compress a folder """
+from datetime import datetime
 from fabric.api import *
-import os.path
-"""
-#from fabric.operations import run, put, sudo
-
-#env.user = 'ubuntu'
-"""
+import shlex
+import os
 
 
-env.hosts = ["100.26.252.120", "52.91.101.188"]
+env.hosts = ['100.26.252.120', '52.91.101.188']
+env.user = "ubuntu"
 
 
 def do_deploy(archive_path):
-    """
-       upload the compressed file and
-       unzip it in the particular server remove
-       unwated directories and create a symlink
-    """
-    if (os.path.isfile(archive_path) is False):
+    """ Deploys """
+    if not os.path.exists(archive_path):
         return False
-
     try:
-        archived = archive_path.split("/")[-1]
-        new_path = ("/data/web_static/releases/" + archived.split(".")[0])
+        name = archive_path.replace('/', ' ')
+        name = shlex.split(name)
+        name = name[-1]
+
+        wname = name.replace('.', ' ')
+        wname = shlex.split(wname)
+        wname = wname[0]
+
+        releases_path = "/data/web_static/releases/{}/".format(wname)
+        tmp_path = "/tmp/{}".format(name)
+
         put(archive_path, "/tmp/")
-
-        run("sudo mkdir -p {}".format(new_path))
-
-        run("sudo tar -xzf /tmp/{} -C {}".format(archived, new_path))
-        run("sudo rm -rf /tmp/{}".format(archived))
-        run("sudo mv {}/web_static/* {}/".format(new_path, new_path))
-        run("sudo rm -rf {}/web_static".format(new_path))
-        run("sudo rm -rf /data/web_static/current")
-        run("sudo ln -s {} /data/web_static/current".format(new_path))
-
+        run("mkdir -p {}".format(releases_path))
+        run("tar -xzf {} -C {}".format(tmp_path, releases_path))
+        run("rm {}".format(tmp_path))
+        run("mv {}web_static/* {}".format(releases_path, releases_path))
+        run("rm -rf {}web_static".format(releases_path))
+        run("rm -rf /data/web_static/current")
+        run("ln -s {} /data/web_static/current".format(releases_path))
+        print("New version deployed!")
         return True
     except:
         return False
