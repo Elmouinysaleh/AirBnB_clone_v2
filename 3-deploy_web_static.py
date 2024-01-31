@@ -1,62 +1,63 @@
 #!/usr/bin/python3
-"""
-    Generate a .tgz archive from the contents of the web_static folder
-    Deploy it to the web servers
-"""
+""" Function that deploys """
+from datetime import datetime
 from fabric.api import *
-import time
-import os.path
+import os
+import shlex
+
 
 env.hosts = ['100.26.252.120', '52.91.101.188']
+env.user = "ubuntu"
+
+
+def deploy():
+    """ DEPLOYS """
+    try:
+        archive_path = do_pack()
+    except:
+        return False
+
+    return do_deploy(archive_path)
 
 
 def do_pack():
-    ''' creates a .tgz archive '''
-    timestmp = time.strftime("%Y%m%d%H%M%S")
     try:
-        local('mkdir -p versions')
-        local('tar -cvzf versions/web_static_{}.tgz web_static/'
-              .format(timestmp))
-        return ('versions/web_static_{}.tgz'.format(timestmp))
+        if not os.path.exists("versions"):
+            local('mkdir versions')
+        t = datetime.now()
+        f = "%Y%m%d%H%M%S"
+        archive_path = 'versions/web_static_{}.tgz'.format(t.strftime(f))
+        local('tar -cvzf {} web_static'.format(archive_path))
+        return archive_path
     except:
         return None
 
 
 def do_deploy(archive_path):
-    """
-       upload the compressed file and
-       unzip it in the particular server remove
-       unwated directories and create a symlink
-    """
-    if (os.path.isfile(archive_path) is False):
+    """ Deploys """
+    if not os.path.exists(archive_path):
         return False
-
     try:
-        archived = archive_path.split("/")[-1]
-        new_path = ("/data/web_static/releases/" + archived.split(".")[0])
+        name = archive_path.replace('/', ' ')
+        name = shlex.split(name)
+        name = name[-1]
+
+        wname = name.replace('.', ' ')
+        wname = shlex.split(wname)
+        wname = wname[0]
+
+        releases_path = "/data/web_static/releases/{}/".format(wname)
+        tmp_path = "/tmp/{}".format(name)
+
         put(archive_path, "/tmp/")
-
-        run("sudo mkdir -p {}".format(new_path))
-
-        run("sudo tar -xzf /tmp/{} -C {}".format(archived, new_path))
-        run("sudo rm -rf /tmp/{}".format(archived))
-        run("sudo mv {}/web_static/* {}/".format(new_path, new_path))
-        run("sudo rm -rf {}/web_static".format(new_path))
-        run("sudo rm -rf /data/web_static/current")
-        run("sudo ln -s {} /data/web_static/current".format(new_path))
-
+        run("mkdir -p {}".format(releases_path))
+        run("tar -xzf {} -C {}".format(tmp_path, releases_path))
+        run("rm {}".format(tmp_path))
+        run("mv {}web_static/* {}".format(releases_path, releases_path))
+        run("rm -rf {}web_static".format(releases_path))
+        run("rm -rf /data/web_static/current")
+        run("ln -s {} /data/web_static/current".format(releases_path))
+        print("New version deployed!")
         return True
-    except:
-        return False
-
-
-def deploy():
-    """
-        Calls do_pack() function then do_deploy
-    """
-    try:
-        archive_path = do_pack()
-        value = do_deploy(archive_path)
-        return value
     except:
         return False
